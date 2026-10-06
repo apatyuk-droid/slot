@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<title>Слот пет-проектов</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Onest:wght@400;500;600&family=Unbounded:wght@600&display=swap">
+<style>
+/* Layout: one phone-width column; the machine is a dark physical object that stays dark in both themes, the page around it follows the theme. */
+:root {
+  --bg: #eceef1;
+  --fg: #16181d;
+  --muted: #5d6470;
+  --surface: #ffffff;
+  --line: #d4d8de;
+  --machine: #17191f;
+  --machine-edge: #2a2e37;
+  --reel: #f4f1e8;
+  --reel-fg: #1b1d22;
+  --reel-dim: #8a8577;
+  --accent: #f0a92e;
+  --accent-ink: #1a1408;
+  --win: #39c27a;
+  --font-display: "Unbounded", "Onest", system-ui, sans-serif;
+  --font-body: "Onest", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --row: 76px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e0f13; --fg: #eceef2; --muted: #9aa1ad; --surface: #181a20; --line: #2b2f38;
+    --machine: #1d2027; --machine-edge: #343946; --reel: #efeadf; --reel-fg: #1b1d22; --reel-dim: #8a8577;
+    --accent: #f3b13f; --accent-ink: #1a1408; --win: #49d18a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e0f13; --fg: #eceef2; --muted: #9aa1ad; --surface: #181a20; --line: #2b2f38;
+  --machine: #1d2027; --machine-edge: #343946; --reel: #efeadf; --reel-fg: #1b1d22; --reel-dim: #8a8577;
+  --accent: #f3b13f; --accent-ink: #1a1408; --win: #49d18a;
+  color-scheme: dark;
+}
+html, body { min-height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.45;
+  padding-inline: 16px;
+  padding-block: 20px 28px;
+}
+.app {
+  max-width: 440px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 6px;
+}
+h1 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(22px, 6.4vw, 28px);
+  line-height: 1.12;
+  margin: 0 0 8px;
+  text-wrap: balance;
+}
+.lead { margin: 0; color: var(--muted); max-width: 38ch; }
+
+/* Machine */
+.machine {
+  background: var(--machine);
+  border: 1px solid var(--machine-edge);
+  border-radius: 22px;
+  padding: 14px 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: 0 18px 40px -22px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.06);
+}
+.labels, .reels, .stops {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.labels span {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #9aa1ad;
+  text-align: center;
+}
+.reel {
+  position: relative;
+  height: calc(var(--row) * 3);
+  background: var(--reel);
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  outline: none;
+}
+.reel:focus-visible { box-shadow: 0 0 0 3px var(--accent); }
+.reel::before, .reel::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0;
+  height: var(--row);
+  pointer-events: none;
+  z-index: 2;
+}
+.reel::before { top: 0; background: linear-gradient(var(--reel) 5%, color-mix(in srgb, var(--reel) 0%, transparent)); }
+.reel::after { bottom: 0; background: linear-gradient(color-mix(in srgb, var(--reel) 0%, transparent), var(--reel) 95%); }
+.payline {
+  position: absolute;
+  left: 0; right: 0;
+  top: var(--row);
+  height: var(--row);
+  border-top: 2px solid var(--accent);
+  border-bottom: 2px solid var(--accent);
+  z-index: 3;
+  pointer-events: none;
+}
+.reel.stopped .payline { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.strip { will-change: transform; }
+.reel.spinning .strip { filter: blur(0.7px); }
+.cell {
+  height: var(--row);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0 6px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 12.5px;
+  line-height: 1.2;
+  color: var(--reel-fg);
+  overflow-wrap: anywhere;
+}
+.cell.jack { font-size: 30px; font-weight: 500; }
+
+.stop {
+  appearance: none;
+  border: 0;
+  border-radius: 12px;
+  padding: 12px 6px;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 15px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  cursor: pointer;
+  box-shadow: 0 3px 0 #a86f0f;
+  transition: transform .06s ease, box-shadow .06s ease, opacity .15s ease;
+}
+.stop:active { transform: translateY(3px); box-shadow: 0 0 0 #a86f0f; }
+.stop:focus-visible { outline: 3px solid #ffffff; outline-offset: 2px; }
+.stop:disabled { opacity: .35; cursor: default; transform: translateY(3px); box-shadow: none; }
+.keys {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: #7d8491;
+  text-align: center;
+  margin: 0;
+}
+
+/* Result */
+.result {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.status { margin: 0; color: var(--muted); font-size: 14px; }
+.combo {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 1.4;
+  user-select: all;
+  overflow-wrap: anywhere;
+}
+.verdict { margin: 0; font-size: 14px; }
+.result.jackpot { border-color: var(--win); }
+.result.jackpot .verdict { color: var(--win); font-weight: 600; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn {
+  appearance: none;
+  flex: 1 1 140px;
+  border-radius: 12px;
+  padding: 11px 12px;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--fg);
+}
+.btn.primary { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.btn:disabled { opacity: .4; cursor: default; }
+.foot { margin: 0; font-size: 12.5px; color: var(--muted); text-align: center; }
+
+@media (prefers-reduced-motion: reduce) {
+  .reel.spinning .strip { filter: none; }
+  .stop { transition: none; }
+}
+</style>
+
+</head>
+<body>
+<main class="app">
+  <header>
+    <p class="eyebrow">IT-слот · выпуск 01</p>
+    <h1>Пет-проект на выходные</h1>
+    <p class="lead">Останови каждый барабан. Что выпадет на жёлтой линии, то и пилишь до понедельника.</p>
+  </header>
+
+  <section class="machine" aria-label="Слот-машина">
+    <div class="labels" aria-hidden="true"><span>Язык</span><span>Проект</span><span>Дедлайн</span></div>
+    <div class="reels">
+      <div class="reel" id="reel0" tabindex="0" role="button" aria-label="Барабан «Язык», нажми, чтобы остановить"><div class="strip"></div><div class="payline"></div></div>
+      <div class="reel" id="reel1" tabindex="0" role="button" aria-label="Барабан «Проект», нажми, чтобы остановить"><div class="strip"></div><div class="payline"></div></div>
+      <div class="reel" id="reel2" tabindex="0" role="button" aria-label="Барабан «Дедлайн», нажми, чтобы остановить"><div class="strip"></div><div class="payline"></div></div>
+    </div>
+    <div class="stops">
+      <button class="stop" id="stop0" type="button">Стоп</button>
+      <button class="stop" id="stop1" type="button">Стоп</button>
+      <button class="stop" id="stop2" type="button">Стоп</button>
+    </div>
+    <p class="keys">На клавиатуре: 1 · 2 · 3, пробел — крутить снова</p>
+  </section>
+
+  <section class="result" id="result" aria-live="polite">
+    <p class="status" id="status">Барабаны крутятся. Останови все три.</p>
+    <p class="combo" id="combo" hidden></p>
+    <p class="verdict" id="verdict" hidden></p>
+    <div class="actions">
+      <button class="btn primary" id="copy" type="button" disabled>Скопировать для комментов</button>
+      <button class="btn" id="again" type="button" disabled>Крутить снова</button>
+    </div>
+  </section>
+
+  <p class="foot">☕☕☕ на линии — джекпот: выходные без кода.</p>
+</main>
+
+<script>
+(function () {
+  var tg = window.Telegram && window.Telegram.WebApp;
+  if (tg) { try { tg.ready(); tg.expand(); } catch (e) {} }
+
+  var JACK = "☕";
+  var REELS = [
+    ["Python", "Rust", "JavaScript", "Go", JACK, "1С", "PHP", "Excel-макросы"],
+    ["Тиндер для котов", "Убийца Notion", "Бот для мамы", JACK, "ИИ-стартап на $1B", "Клон Тетриса", "Ещё один todo-лист", "Своя ОС"],
+    ["К понедельнику", "За один вечер", "До пенсии", "Вчера", "Никогда", JACK, "Во время созвона", "Пока билд собирается"]
+  ];
+  var reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var SPEEDS = [880, 1010, 950].map(function (s) { return reduced ? s * 0.45 : s; });
+  var ROW = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--row")) || 76;
+  var STOP_MS = 560;
+  var BACK = 1.5;
+
+  function easeOutBack(t) {
+    var c1 = BACK, c3 = BACK + 1, u = t - 1;
+    return 1 + c3 * u * u * u + c1 * u * u;
+  }
+
+  function Reel(i) {
+    this.i = i;
+    this.items = REELS[i];
+    this.n = this.items.length;
+    this.speed = SPEEDS[i];
+    this.el = document.getElementById("reel" + i);
+    this.strip = this.el.querySelector(".strip");
+    this.btn = document.getElementById("stop" + i);
+    var html = "";
+    for (var r = 0; r < 5; r++) {
+      for (var k = 0; k < this.n; k++) {
+        var it = this.items[k];
+        html += '<div class="cell' + (it === JACK ? " jack" : "") + '">' + it + "</div>";
+      }
+    }
+    this.strip.innerHTML = html;
+    this.pos = Math.random() * this.n * ROW;
+    this.spin();
+  }
+  Reel.prototype.spin = function () {
+    this.state = "spin";
+    this.result = null;
+    this.el.classList.add("spinning");
+    this.el.classList.remove("stopped");
+    this.btn.disabled = false;
+  };
+  Reel.prototype.stop = function (now) {
+    if (this.state !== "spin") return false;
+    this.state = "stopping";
+    this.from = this.pos;
+    var ahead = this.speed * (STOP_MS / 1000) / (BACK + 3);
+    this.to = Math.ceil((this.pos + ahead) / ROW) * ROW;
+    this.t0 = now;
+    this.btn.disabled = true;
+    this.el.classList.remove("spinning");
+    return true;
+  };
+  Reel.prototype.update = function (now, dt) {
+    var cycle = this.n * ROW;
+    if (this.state === "spin") {
+      this.pos = (this.pos + this.speed * dt) % cycle;
+    } else if (this.state === "stopping") {
+      var t = Math.min(1, (now - this.t0) / STOP_MS);
+      this.pos = this.from + (this.to - this.from) * easeOutBack(t);
+      if (t >= 1) {
+        this.pos = this.to % cycle;
+        this.state = "stopped";
+        var top = Math.round(this.pos / ROW);
+        this.result = this.items[(top + 1) % this.n];
+        this.el.classList.add("stopped");
+        onReelStopped(this);
+      }
+    }
+    this.strip.style.transform = "translate3d(0," + (-this.pos).toFixed(2) + "px,0)";
+  };
+
+  var reels = [0, 1, 2].map(function (i) { return new Reel(i); });
+
+  // Feedback: haptics in Telegram, a short click sound after the first tap
+  var audio = null;
+  function tick(freq, len, delay) {
+    try {
+      if (!audio) audio = new (window.AudioContext || window.webkitAudioContext)();
+      var t = audio.currentTime + (delay || 0);
+      var o = audio.createOscillator(), g = audio.createGain();
+      o.type = "square";
+      o.frequency.setValueAtTime(freq, t);
+      g.gain.setValueAtTime(0.06, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+      o.connect(g); g.connect(audio.destination);
+      o.start(t); o.stop(t + len + 0.02);
+    } catch (e) {}
+  }
+  function haptic(kind) {
+    try {
+      if (tg && tg.HapticFeedback) {
+        if (kind === "win") tg.HapticFeedback.notificationOccurred("success");
+        else tg.HapticFeedback.impactOccurred("medium");
+      } else if (navigator.vibrate) {
+        navigator.vibrate(kind === "win" ? [30, 60, 30] : 15);
+      }
+    } catch (e) {}
+  }
+
+  var resultEl = document.getElementById("result");
+  var statusEl = document.getElementById("status");
+  var comboEl = document.getElementById("combo");
+  var verdictEl = document.getElementById("verdict");
+  var copyBtn = document.getElementById("copy");
+  var againBtn = document.getElementById("again");
+  var shareText = "";
+
+  function stopReel(i) {
+    if (reels[i].stop(performance.now())) { tick(720, 0.05); haptic(); }
+  }
+
+  function onReelStopped() {
+    tick(980, 0.04);
+    var left = reels.filter(function (r) { return r.state !== "stopped"; }).length;
+    if (left > 0) {
+      statusEl.textContent = left === 2 ? "Осталось остановить два барабана." : "Остался последний барабан.";
+      return;
+    }
+    var picks = reels.map(function (r) { return r.result; });
+    var jacks = picks.filter(function (p) { return p === JACK; }).length;
+    statusEl.textContent = "Тебе выпало:";
+    resultEl.classList.toggle("jackpot", jacks === 3);
+    if (jacks === 3) {
+      comboEl.textContent = "☕ ☕ ☕";
+      verdictEl.textContent = "Джекпот. Выходные без кода, ноутбук не открывать.";
+      shareText = "🎰 Выбил джекпот ☕☕☕ — выходные без кода!";
+      haptic("win");
+      tick(660, 0.08, 0.05); tick(880, 0.08, 0.15); tick(1320, 0.16, 0.25);
+    } else {
+      comboEl.textContent = picks.join(" + ");
+      verdictEl.textContent = jacks === 2
+        ? "Два кофе из трёх. Почти отдых, но кодить всё-таки придётся."
+        : jacks === 1
+          ? "Кофе на линии: можно взять одну паузу на перекур."
+          : "Удачи. Скинь, что получилось, в понедельник.";
+      shareText = "🎰 Мой пет-проект на выходные: " + picks.join(" + ");
+    }
+    comboEl.hidden = false;
+    verdictEl.hidden = false;
+    copyBtn.disabled = false;
+    copyBtn.textContent = "Скопировать для комментов";
+    againBtn.disabled = false;
+  }
+
+  function spinAgain() {
+    reels.forEach(function (r) { r.spin(); });
+    resultEl.classList.remove("jackpot");
+    statusEl.textContent = "Барабаны крутятся. Останови все три.";
+    comboEl.hidden = true;
+    verdictEl.hidden = true;
+    copyBtn.disabled = true;
+    againBtn.disabled = true;
+    tick(520, 0.05);
+  }
+
+  reels.forEach(function (r, i) {
+    r.btn.addEventListener("click", function () { stopReel(i); });
+    r.el.addEventListener("click", function () { stopReel(i); });
+    r.el.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); stopReel(i); }
+    });
+  });
+  againBtn.addEventListener("click", spinAgain);
+  copyBtn.addEventListener("click", function () {
+    function fallback() {
+      var range = document.createRange();
+      range.selectNodeContents(comboEl);
+      var sel = window.getSelection();
+      sel.removeAllRanges(); sel.addRange(range);
+      copyBtn.textContent = "Текст выделен, скопируй вручную";
+    }
+    try {
+      navigator.clipboard.writeText(shareText).then(function () {
+        copyBtn.textContent = "Скопировано";
+      }, fallback);
+    } catch (e) { fallback(); }
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.target && e.target.classList && e.target.classList.contains("reel")) return;
+    if (e.key === "1" || e.key === "2" || e.key === "3") stopReel(Number(e.key) - 1);
+    if (e.key === " " && !againBtn.disabled && e.target === document.body) { e.preventDefault(); spinAgain(); }
+  });
+
+  var last = performance.now();
+  function frame(now) {
+    var dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    reels.forEach(function (r) { r.update(now, dt); });
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
